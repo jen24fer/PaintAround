@@ -17,7 +17,10 @@ box. All the graphics will draw only in the stencil view.
 You can "draw" a stencil view by touch & draw. The touch down will set the
 position, and the drag will set the size.
 '''
-
+from kivy.graphics.fbo import Fbo
+from kivy.graphics import Color, Rectangle, Canvas, ClearBuffers, ClearColor, Translate, Scale
+from kivy.graphics.transformation import Matrix
+#from kivy.uix.image import Image, AsyncImage
 from kivy.app import App
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
@@ -28,18 +31,27 @@ from kivy.uix.label import Label
 from kivy.uix.stencilview import StencilView
 from random import random as r
 from functools import partial
+from kivy.factory import Factory
+
+
+Window.clearcolor = (1, 1, 1, 1)
 
 
 class StencilTestWidget(StencilView):
     '''Drag to define stencil area
     '''
 
-    def on_touch_down(self, touch):
-        self.pos = touch.pos
-        self.size = (1, 1)
+    def __init__(self,**kwargs):
+        super().__init__(**kwargs)
+        self.pos = (0,0)
+        self.size = (1200, 1200)
+        
+    # def on_touch_down(self, touch):
+    #     self.pos = touch.pos
+    #     self.size = (1, 1)
 
-    def on_touch_move(self, touch):
-        self.size = (touch.x - touch.ox, touch.y - touch.oy)
+    # def on_touch_move(self, touch):
+    #     self.size = (touch.x - touch.ox, touch.y - touch.oy)
 
 
 class StencilCanvasApp(App):
@@ -59,6 +71,28 @@ class StencilCanvasApp(App):
     def reset_rects(self, label, wid, *largs):
         label.text = '0'
         wid.canvas.clear()
+        
+    def export(self, wid, *largs):
+        # if self.parent is not None:
+        #     canvas_parent_index = self.parent.canvas.indexof(self.canvas)
+        #     self.parent.canvas.remove(self.canvas)
+
+        fbo = Fbo(size=wid.size, with_stencilbuffer=True)
+
+        with fbo:
+            ClearColor(1,1, 1, 1)
+            ClearBuffers()
+            #Scale(1, -1, 1)
+            #Translate(-self.x, -self.y - self.height, 0)
+        
+        fbo.add(wid.canvas)
+        fbo.draw()
+        img = fbo.texture
+        img.save('test.png')
+        fbo.remove(wid.canvas)
+        
+        
+        #wid.export_to_png("test.png")
 
     def build(self):
         wid = StencilTestWidget(size_hint=(None, None), size=Window.size)
@@ -72,7 +106,7 @@ class StencilCanvasApp(App):
         btn_reset.bind(on_press=partial(self.reset_rects, label, wid))
 
         btn_stencil = Button(text='Reset Stencil')
-        btn_stencil.bind(on_press=partial(self.reset_stencil, wid))
+        btn_stencil.bind(on_press=partial(self.export, wid))
 
         layout = BoxLayout(size_hint=(1, None), height=50)
         layout.add_widget(btn_add500)
@@ -91,15 +125,3 @@ class StencilCanvasApp(App):
 
 if __name__ == '__main__':
     StencilCanvasApp().run()
-© 2020 GitHub, Inc.
-Terms
-Privacy
-Security
-Status
-Help
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About
