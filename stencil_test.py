@@ -45,9 +45,12 @@ from kivy.uix.image import Image, AsyncImage
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 
 from kivy.uix.slider import Slider
+from kivy.uix.textinput import TextInput
+
 
 import imageio
 import matplotlib.pyplot as plt
+import random
 Window.clearcolor = (1, 1, 1, 1)
 
 
@@ -127,68 +130,6 @@ class StencilTestWidget(StencilView):
 
 
 
-class StencilCanvasApp(App):
-        
-    def build(self):
-        #wid = StencilTestWidget(size_hint=(None, None), size=Window.size)
-
-        #label = Label(text='0')
-
-        #btn_add500 = Button(text='+ 200 rects')
-        #btn_add500.bind(on_press=partial(self.add_rects, label, wid, 200))
-
-        #btn_reset = Button(text='Reset Rectangles')
-        #btn_reset.bind(on_press=partial(self.reset_rects, label, wid))
-
-        # btn_stencil = Button(text='Take Screenshot')
-        # btn_stencil.bind(on_press=partial(self.export, wid))
-
-        # layout = BoxLayout(size_hint=(1, None), height=50)
-        # #layout.add_widget(btn_add500)
-        # #layout.add_widget(btn_reset)
-        # layout.add_widget(btn_stencil)
-        # #layout.add_widget(label)
-
-        # root = BoxLayout(orientation='vertical')
-        # rfl2 = BoxLayout(orientation='vertical')
-        # rfl = FloatLayout()
-        # wid.add_widget(MyPaintWidget())
-        # rfl.add_widget(wid)
-        # #rfl.add_widget(btn_stencil)
-        # root.add_widget(rfl)
-        # root.add_widget(layout)
-        
-        self.screen_manager = ScreenManager()
-
-        self.screens = []
-        # self.main_menu = MainMenu()
-        # screen = Screen(name = 'Main')
-        # screen.add_widget(self.main_menu)
-        # self.screen_manager.add_widget(screen)
-        # self.screens.append(screen)
-        
-        # self.enter_topics = EnterTopics()
-        # screen = Screen(name = 'EnterTopics')
-        # screen.add_widget(self.enter_topics)
-        # self.screen_manager.add_widget(screen)
-        # self.screens.append(screen)
-        
-        
-        # self.paint_screen = PaintScreen()
-        # screen = Screen(name = 'Paint')
-        # screen.add_widget(self.paint_screen)
-        # self.screen_manager.add_widget(screen)
-        
-        # self.screens.append(screen)
-        
-        screen = PaintScreenContainer()
-        self.screens.append(screen)
-        self.screen_manager.add_widget(screen)
-    
-        return self.screen_manager
-
-        # return root
-    
 
 
 class MyPaintWidget(Widget):
@@ -296,18 +237,7 @@ class PaintScreen(GridLayout):
         
 #         #return parent
     
-#     # def on_enter(self):
-#     #     print("ENtereing screen")
-#     #     global SELECTED_THEME
-#     #     global THEMES
-#     #     if len(THEMES) == 0:
-#     #         SELECTED_THEME = ""
-#     #     else:
-#     #         SELECTED_THEME = random.sample(THEMES, 1)
-#     #     self.popup = Popup(title=f'Drawing: {SELECTED_THEME}',
-#     #                   content=Label(text="You have 30 seconds to draw!"),
-#     #                   size_hint=(None, None), size=(600, 400),auto_dismiss=True)
-#     #     self.popup.open()
+
     
     def export(self,*args):
         print("Hello there export")
@@ -443,15 +373,29 @@ class PaintScreenContainer(Screen):
         for child in self.paintscreen.children[:]:
             if child.id == 'stencil':
                 self.stencil = child
-    
+
         
     def on_enter(self):
         print("Entered the screen")
         # self.crudeclock = IncrediblyCrudeClock5()
         # self.add_widget(self.crudeclock)
         # self.crudeclock.start()
-        num = 60
         
+        global SELECTED_THEME
+        global THEMES
+        if len(THEMES) == 0:
+            SELECTED_THEME = ""
+        else:
+            SELECTED_THEME = random.sample(THEMES, 1)
+        self.popup = Popup(title=f'Drawing: {str(SELECTED_THEME)}',
+                      content=Label(text="You have 30 seconds to draw!"),
+                      size_hint=(None, None), size=(600, 400),auto_dismiss=True)
+        self.popup.open()
+        
+        paint_app.title = SELECTED_THEME
+        
+        num = 60
+          
         self.add_widget(self.count)
         def count_it(num):
             if num == 0: 
@@ -469,10 +413,14 @@ class PaintScreenContainer(Screen):
                     img.save('test.png')
                     fbo.remove(self.stencil.canvas)
                     self.remove_widget(self.paintscreen)
+                    self.imge = Image(source='test.png', pos =(-200,0), size = (1200,1200))
+                    self.add_widget(self.imge)
                     self.paintscreen = PaintScreen()
+                    #imge = Image(source='test.png')
+                    #self.paintscreen.add_widget(imge)
                     self.add_widget(self.paintscreen)
                         #self.paintscreen.export()
-                        
+     
                         #self.paintexport(self.stencil)
                 return
             num -= 1
@@ -480,6 +428,8 @@ class PaintScreenContainer(Screen):
             Clock.schedule_once(lambda dt: count_it(num), 1)
 
         Clock.schedule_once(lambda dt: count_it(5), 0)
+
+        
         # after the clock runs out of time, we want to take a screenshot
         # photo = Window.screenshot("test.png")
         # print(photo)
@@ -554,7 +504,154 @@ class SelectableGrid(FocusBehavior, CompoundSelectionBehavior, GridLayout):
 
 
 
+
+class EnterTopics(GridLayout):
+    
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.cols = 1
+        self.rows = 3
+        global THEMES
+        THEMES = set()
+        # self.message = Label(halign="center",valign="middle",font_size=30,color=[0,0,0,1])
+        # self.message.bind(width=self.update_text_width)
+        # self.add_widget(self.message)
+        self.switchbtn = Button(text="Switch")
+        #self.switchbtn.bind(on_release = self.switch_button)
+        #self.add_widget(self.switchbtn)
+        
+        self.history = Label(text = 'Submit Themes to Paint (submit after each theme).  You have 30 seconds!',
+                             height = Window.size[1]*0.4, size_hint_y=None,color=[0,0,0,1])
+        self.add_widget(self.history)
+        #self.crudeclock = IncrediblyCrudeClock()
+        
+        #self.add_widget(self.crudeclock)
+        
+        
+        self.topic = TextInput(text="", multiline=False)
+        
+        
+        self.send = Button(text = "Submit")
+        self.send.bind(on_release=self.send_text)
+        
+        bottom_line = GridLayout(cols=3)
+        bottom_line.add_widget(self.topic)
+        bottom_line.add_widget(self.send)
+
+        self.add_widget(bottom_line)
+
+
+    def send_text(self, obj):
+        global THEMES
+        if self.topic.text != "":
+            THEMES.add(self.topic.text)
+        print(THEMES)
+        self.topic.text = ""
+
+    def text_changed(self, obj):
+        print("Animation complete!")
+        paint_app.screen_manager.current = "Paint"
+        
+            
+    # def switch_button(self, obj):
+    #     info = "Switching screen"
+    #     #paint_app.main_menu.update_info(info)
+    #     #paint_app.screen_manager.current = "Paint"
+    #     #clock = IncrediblyCrudeClock();
+    #     #paint_app.screen_manager.current.add_widget(clock)
+    #     #paint_app.screen_manager.current.clock.start()
+    #     paint_app.screen_manager.switch_to(paint_app.screens[2])
+        
+class EnterTopicsScreenContainer(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.count = Label(text="Test", pos=(720, 300),font_size=45,color=[0,0,0,1])
+        self.enter_topics = EnterTopics()
+        self.add_widget(self.enter_topics)
+    
+    def on_enter(self):
+        print("Entering the topic screen")
+        num = 30
+        self.add_widget(self.count)
+        def count_it(num):
+            if num == 0: 
+                
+                return
+            num -= 1
+            print(num)
+            self.count.text = str(num)
+            self.count.text = str(num)
+            Clock.schedule_once(lambda dt: count_it(num), 1)
+
+        Clock.schedule_once(lambda dt: count_it(5), 0)
+        print("executed stuff here?") 
+        Clock.schedule_once(self.switch, 5)
+        
+    def switch(self,obj):
+        print("switching...s")
+        self.remove_widget(self.count)
+        paint_app.screen_manager.switch_to(paint_app.screens[2])
+
+class MainMenu(GridLayout):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.cols = 1
+        self.message = Label(halign="center",valign="middle",font_size=30,color=[0,0,0,1])
+        self.message.bind(width=self.update_text_width)
+        self.add_widget(self.message)
+        menubtn = Button(text = "Start Game")
+        menubtn.bind(on_release = self.play_game)
+        self.add_widget(menubtn)
+        
+    def update_info(self, message):
+        self.message.text = message
+
+    def update_text_width(self, *_):
+        self.message.text_size = (self.message.width*0.9, None)
+        
+    def play_game(self,obj):
+        paint_app.screen_manager.switch_to(paint_app.screens[1])
+
+
+class StencilCanvasApp(App):
+    title = 'PaintAround'
+    def build(self):
+        
+        self.screen_manager = ScreenManager()
+
+        self.screens = []
+        self.main_menu = MainMenu()
+        screen = Screen(name = 'Main')
+        screen.add_widget(self.main_menu)
+        self.screen_manager.add_widget(screen)
+        self.screens.append(screen)
+        
+        screen = EnterTopicsScreenContainer()
+        #screen = Screen(name = 'EnterTopics')
+        #screen.add_widget(self.enter_topics)
+        self.screen_manager.add_widget(screen)
+        self.screens.append(screen)
+        
+        
+        # self.paint_screen = PaintScreen()
+        # screen = Screen(name = 'Paint')
+        # screen.add_widget(self.paint_screen)
+        # self.screen_manager.add_widget(screen)
+        
+        # self.screens.append(screen)
+        
+        screen = PaintScreenContainer(name='Paint')
+        self.screens.append(screen)
+        self.screen_manager.add_widget(screen)
+    
+        return self.screen_manager
+
+        # return root
+    
+
 if __name__ == '__main__':
-    StencilCanvasApp().run()
+    paint_app = StencilCanvasApp()
+    paint_app.run()
 
 
