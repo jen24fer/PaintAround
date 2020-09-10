@@ -37,7 +37,8 @@ def threaded_client(conn, p, gameID):
     while True:
         try:
             data = conn.recv(4096*8).decode()
-            if gameID in games:
+            print(data)
+            if gameID in games: # if the game still exists
                 game = games[gameID]
                 if not data:
                     break
@@ -79,6 +80,7 @@ while True:
         print("Creating a new game...")
     else: # both players are connected so they're ready to play
         games[gameID].ready = True
+        print("Both players are connected")
         p = 1
         
     start_new_thread(threaded_client, (conn, p, gameID))

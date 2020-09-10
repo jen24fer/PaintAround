@@ -19,7 +19,7 @@ class Network:
         self.addr = (self.server, self.port)
         self.p = self.conne()
     
-    def getP(self):
+    def getP(self): # same as get pos
         return self.p
         
     def conne(self):
@@ -30,12 +30,13 @@ class Network:
             print(e)
             print("Lol fail")
         
+    
         
     def send(self, data):
         try:
             self.client.send(data)
             print("Sent: ", data)
-            return pickle.loads(self.client.recv(4096*4))
+            return pickle.loads(self.client.recv(4096*32))
         except socket.error as e:
             print(e)
             

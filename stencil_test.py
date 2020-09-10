@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -u
 # -*- coding: utf-8 -*-
 """
 Created on Tue Sep  8 09:12:21 2020
@@ -40,20 +40,26 @@ from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.behaviors.compoundselection import CompoundSelectionBehavior
 from kivy.uix.popup import Popup
 from kivy.properties import ObjectProperty, NumericProperty, StringProperty
+from kivy.graphics.texture import Texture
 
 from kivy.uix.image import Image, AsyncImage
 from kivy.uix.screenmanager import ScreenManager, Screen, NoTransition
 
 from kivy.uix.slider import Slider
 from kivy.uix.textinput import TextInput
-
+from network import Network
 
 import imageio
 import matplotlib.pyplot as plt
 import random
+import pickle
+import io
+import numpy as np
+from game import Game
+from player import Player
+import struct
+import socket
 Window.clearcolor = (1, 1, 1, 1)
-
-
 
 WINSORYELLOW = (255/255.0,229/255.0,15/255.0)
 WINSORYELLOWDEEP = (255/255.0, 200/255.0, 53/255.0)
@@ -82,6 +88,8 @@ my_color = [0, 0, 0]
 my_alpha = 100.0
 my_linewidth = 1.0
 
+sock = socket.socket()
+sock.connect(('localhost',8000))
 
 
 class StencilTestWidget(StencilView):
@@ -320,9 +328,9 @@ class PaintScreen(GridLayout):
         
     def mix_colors(self,obj):
         label = Label(text='Select any amount \n of colors to mix\n from the palette')
-        exitbtn = Button(text = "Done",
-                          size_hint=(0.215, 0.075))
-        mixbutt = Button(text = 'Mix',size_hint=(0.215, 0.075),pos = (50,50))
+        exitbtn = Button(text = "Done")
+        mixbutt = Button(text = 'Mix',pos = (50,50))
+        random_button = Button(text = "Random", pos=(100,100))
         grid = SelectableGrid(cols=2, rows=7, touch_multiselect=True,
                               multiselect=True)
         for i in range(0,len(PAINT_COLORS)):
@@ -333,20 +341,26 @@ class PaintScreen(GridLayout):
             grid.add_widget(col_button)
         
         
+        
         boxLayout = BoxLayout(orientation = 'horizontal')
         boxLayout.add_widget(label)
         boxLayout.add_widget(exitbtn)
+        boxLayout.add_widget(random_button)
         boxLayout.add_widget(mixbutt)
+        
         boxLayout.add_widget(grid)
+        
         popup = Popup(title='Mix Colors',
                       content=boxLayout,
-                      size_hint=(None, None), size=(600, 400),auto_dismiss=False)
+                      size_hint=(None, None), size=(1250, 400),auto_dismiss=False, pos_hint={'x': 0.1, 
+                            'y':0})
        
         exitbtn.bind(on_press = popup.dismiss)
         # backgroundcolors = []
         # for ch in grid.children:
         #     backgroundcolors.append(ch.background_color) 
         mixbutt.bind(on_press = self.mix)
+        random_button.bind(on_release = self.random_color)
         popup.open()
 
     def switch_button(self, obj):
@@ -354,6 +368,11 @@ class PaintScreen(GridLayout):
         # paint_app.main_menu.update_info(info)
         # paint_app.screen_manager.current = "Main"
   
+    def random_color(self, obj):
+        global my_color 
+        color = [random.randint(0,255)/255.0 for i in range(0,3)]
+        my_color = color#(random.randint(0,255), random.randint(0,255), random.randint(0,255))
+        print(my_color)
 
 # class ImageTest(Image):
 #     def __init__(self, **kwargs):
@@ -394,6 +413,7 @@ class PaintScreenContainer(Screen):
         
         paint_app.title = SELECTED_THEME
         
+
         num = 60
           
         self.add_widget(self.count)
@@ -410,24 +430,68 @@ class PaintScreenContainer(Screen):
                     fbo.add(self.stencil.canvas)
                     fbo.draw()
                     img = fbo.texture
-                    img.save('test.png')
+                    #print(img)
+                    #img.save('test.png')
                     fbo.remove(self.stencil.canvas)
                     self.remove_widget(self.paintscreen)
-                    self.imge = Image(source='test.png', pos =(-200,0), size = (1200,1200))
+                    im = np.frombuffer(img.pixels, np.uint8)
+                    #print(im)
+                    #im = imageio.imread('test.png')
+                    #print(im.shape)
+                    im = np.reshape(im, (5760000,1))
+                    #data = im.tostring()
+                    #print(data)
+                    data = im
+                    serialized_data = pickle.dumps(data, protocol=2)
+                    sock.sendall(serialized_data)
+                    #sock.close()
+                    # sock = socket.socket()
+                    # data= numpy.zeros((1, 60,30))
+                    # sock.connect(('localhost',8000))
+                    # serialized_data = pickle.dumps(data, protocol=2)
+                    # sock.sendall(serialized_data)
+                    sock.close()
+                    
+                    #new_data = n.send(data)
+                    #print(new_data)
+                    #print(np.fromstring(data))
+                    # print(n.getP())
+                    #print(new_data.get_player_move(player))
+                    # new_data2 = new_data.get_player_move(player)
+                    # print(new_data2)
+                    # new_data3 = np.fromstring(new_data2)
+                    # print(new_data3.shape)
+                    #new_data2 = np.reshape(new_data2, (1200,1200,3))
+                    pix = np.frombuffer(data,np.uint8)
+                    a = np.empty_like(pix)
+                    a[:] = pix
+                    #print(pix)
+                    #print(pix.shape)
+                    
+                    texture = Texture.create(size=(1200, 1200))
+                    
+                    texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
+
+                        #self.paintscreen.export()
+                    # print("Trying to send an image")
+     
+                    #new_image = read_pos(n.conne())
+                    #print(f"The image we are receiving back is {new_image}")
+                    #imageio.save('test2.png', new_image)
+                    #player1.x = new_image
+                    self.imge = Image( pos =(-200,0), size = (1200,1200), texture=texture)
                     self.add_widget(self.imge)
                     self.paintscreen = PaintScreen()
                     #imge = Image(source='test.png')
                     #self.paintscreen.add_widget(imge)
                     self.add_widget(self.paintscreen)
-                        #self.paintscreen.export()
-     
                         #self.paintexport(self.stencil)
                 return
             num -= 1
             self.count.text = str(num)
             Clock.schedule_once(lambda dt: count_it(num), 1)
 
-        Clock.schedule_once(lambda dt: count_it(5), 0)
+        Clock.schedule_once(lambda dt: count_it(15), 0)
 
         
         # after the clock runs out of time, we want to take a screenshot
@@ -435,6 +499,9 @@ class PaintScreenContainer(Screen):
         # print(photo)
         
         #self.paintscreen.export()
+
+
+
 
 
 class SelectableGrid(FocusBehavior, CompoundSelectionBehavior, GridLayout):
@@ -591,7 +658,7 @@ class EnterTopicsScreenContainer(Screen):
     def switch(self,obj):
         print("switching...s")
         self.remove_widget(self.count)
-        paint_app.screen_manager.switch_to(paint_app.screens[2])
+        paint_app.screen_manager.switch_to(paint_app.screens[3])
 
 class MainMenu(GridLayout):
     def __init__(self, **kwargs):
@@ -613,6 +680,25 @@ class MainMenu(GridLayout):
     def play_game(self,obj):
         paint_app.screen_manager.switch_to(paint_app.screens[1])
 
+class LoadingScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+    def on_enter(self):
+        game = Game(100)
+        # p2pos = n.send(str.encode("Ready"))
+        # player2.x = p2pos
+        
+        if not(game.connected()):
+            label = Label(text="Waiting for players to connect...", color=[0,0,0,1])
+            paint_app.screen_manager.switch_to(paint_app.screens[2])
+        else:
+            label = Label(text="Players connected",color = [0,0,0,1])
+            paint_app.screen_manager.switch_to(paint_app.screens[2])
+        self.add_widget(label)
+    
+
+
 
 class StencilCanvasApp(App):
     title = 'PaintAround'
@@ -621,24 +707,18 @@ class StencilCanvasApp(App):
         self.screen_manager = ScreenManager()
 
         self.screens = []
-        self.main_menu = MainMenu()
-        screen = Screen(name = 'Main')
-        screen.add_widget(self.main_menu)
-        self.screen_manager.add_widget(screen)
-        self.screens.append(screen)
-        
-        screen = EnterTopicsScreenContainer()
-        #screen = Screen(name = 'EnterTopics')
-        #screen.add_widget(self.enter_topics)
-        self.screen_manager.add_widget(screen)
-        self.screens.append(screen)
-        
-        
-        # self.paint_screen = PaintScreen()
-        # screen = Screen(name = 'Paint')
-        # screen.add_widget(self.paint_screen)
+        # self.main_menu = MainMenu()
+        # screen = Screen(name = 'Main')
+        # screen.add_widget(self.main_menu)
         # self.screen_manager.add_widget(screen)
+        # self.screens.append(screen)
         
+        # screen = LoadingScreen(name="Load")
+        # self.screen_manager.add_widget(screen)
+        # self.screens.append(screen)
+        
+        # screen = EnterTopicsScreenContainer()
+        # self.screen_manager.add_widget(screen)
         # self.screens.append(screen)
         
         screen = PaintScreenContainer(name='Paint')
@@ -648,10 +728,30 @@ class StencilCanvasApp(App):
         return self.screen_manager
 
         # return root
-    
+   
+def read_pos(s):
+    #s = s.split(",")
+    return np.fromstring(s, sep = ',')
+
+
+def make_pos(arr):
+    return np.array2string(arr)
 
 if __name__ == '__main__':
+    n = Network()
     paint_app = StencilCanvasApp()
+    player = int(n.getP())
+    print("You are player ", player)
+
+
+    while True:
+        game = n.send(str.encode("reset"))
+        if game.connected():
+            print("Game connected!")
+            break
+
     paint_app.run()
+
+
 
 
