@@ -55,10 +55,12 @@ import random
 import pickle
 import io
 import numpy as np
-from game import Game
-from player import Player
+# from game import Game
+# from player import Player
 import struct
-import socket
+import os
+import sys
+import socket_client
 Window.clearcolor = (1, 1, 1, 1)
 
 WINSORYELLOW = (255/255.0,229/255.0,15/255.0)
@@ -88,8 +90,6 @@ my_color = [0, 0, 0]
 my_alpha = 100.0
 my_linewidth = 1.0
 
-sock = socket.socket()
-sock.connect(('localhost',8000))
 
 
 class StencilTestWidget(StencilView):
@@ -102,20 +102,9 @@ class StencilTestWidget(StencilView):
         self.pos = (0,0)
         self.size = (1200, 1200)
         self.color = [0,0,0,1]
-        
-    # def on_touch_down(self, touch):
-    #     self.pos = touch.pos
-    #     self.size = (1, 1)
-
-    # def on_touch_move(self, touch):
-    #     self.size = (touch.x - touch.ox, touch.y - touch.oy)
-
 
 
     def export(self, wid, *largs):
-        # if self.parent is not None:
-        #     canvas_parent_index = self.parent.canvas.indexof(self.canvas)
-        #     self.parent.canvas.remove(self.canvas)
 
         fbo = Fbo(size=wid.size, with_stencilbuffer=True)
 
@@ -165,12 +154,6 @@ class PaintScreen(GridLayout):
         size_paint = 100
         iters = 0
 
-#         # self.cols = 2
-#         # self.rows = 2
-#         wid = StencilTestWidget(size_hint=(None, None), size=(1300,1300))
-#         # self.parent = Widget()
-        
-#         self.painter = MyPaintWidget()
         self.paint_widget = MyPaintWidget()
         self.stencil = StencilTestWidget(size_hint=(None, None), size=(1200,1200),id = 'stencil')
         self.stencil.add_widget(self.paint_widget)
@@ -194,18 +177,6 @@ class PaintScreen(GridLayout):
         self.add_widget(changeLinewidth)
         self.add_widget(changeAlpha)       
         self.add_widget(Label(text='Water (Transparency)', pos=(1350,1040), color=(0,0,0,1)))
-
-
-#         #parent.add_widget(self.painter)
-#         self.add_widget(self.painter)
-        
-#         #parent.add_widget(wid)
-#         #self.crudeclock = IncrediblyCrudeClock()
-        
-#         #self.add_widget(self.crudeclock)
-#         #self.crudeclock.start()
-        
-#             #return grid
         
         for col in PAINT_COLORS:
             if iters % 2 == 0 and iters != 0:
@@ -231,19 +202,6 @@ class PaintScreen(GridLayout):
         self.add_widget(clearbtn)
         self.add_widget(mixbtn)
         self.add_widget(switchbtn)
-        
-
-#         # boxLayout = BoxLayout(orientation = 'horizontal')
-#         # label = Label(text='List as many \n themes as you can \n think of'
-#         #               ' in \n 90 seconds!')
-#         # boxLayout.add_widget(label)
-#         # popup = Popup(title='Create Themes',
-#         #               content=boxLayout,
-#         #               size_hint=(None, None), size=(1000, 1000),auto_dismiss=True)
-       
-#         #parent.add_widget(popup)
-        
-#         #return parent
     
 
     
@@ -253,34 +211,6 @@ class PaintScreen(GridLayout):
         im = imageio.imread(photo,as_gray=False)
         print(im.shape)
         plt.imshow(im)
-
-#         im2 = im[0:1199, 0:1199, :]
-#         #im2 = np.array(im2, np.uint8)
-#         # send the image to the server
-#         global n
-#         n.send(pickle.dumps("im2"))
-#         #n.send(pickle.dumps(im2))
-        
-#         #self.painter.export_to_png("test.png")
-#         # # if self.parent is not None:
-#         # #     canvas_parent_index = self.parent.canvas.indexof(self.canvas)
-#         # #     self.parent.canvas.remove(self.canvas)
-#         # fbo = Fbo(size=self.size, with_stencilbuffer=True)
-
-#         # with fbo:
-#         #     ClearColor(1, 1, 1, 1)
-#         #     ClearBuffers()
-#         #     #Scale(1, -1, 1)
-#         #     #Translate(-self.x, -self.y - self.height, 0)
-#         #     #self.painter.export_to_png("test2.png")
-            
-#         #     Scale(1, -1, 1)
-#         #     Translate(-self.painter.x, -self.painter.y - self.painter.height, 0)
-#         #     Window.screenshot("test.png")
-#         #     fbo.add(self.painter.canvas)
-#         #     #fbo.draw()
-#         #     fbo.texture.save("gidhup.png", flipped=False)
-#         #     #fbo.remove(self.painter.canvas)
         
     def clear_canvas(self, obj):
         self.paint_widget.canvas.clear()
@@ -374,12 +304,6 @@ class PaintScreen(GridLayout):
         my_color = color#(random.randint(0,255), random.randint(0,255), random.randint(0,255))
         print(my_color)
 
-# class ImageTest(Image):
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-#         im = Image(source="test0006.png")
-#         self.add_widget(im)
-
 
 class PaintScreenContainer(Screen):
     
@@ -396,9 +320,6 @@ class PaintScreenContainer(Screen):
         
     def on_enter(self):
         print("Entered the screen")
-        # self.crudeclock = IncrediblyCrudeClock5()
-        # self.add_widget(self.crudeclock)
-        # self.crudeclock.start()
         
         global SELECTED_THEME
         global THEMES
@@ -424,57 +345,81 @@ class PaintScreenContainer(Screen):
                 with fbo:
                     ClearColor(1,1, 1, 1)
                     ClearBuffers()
-                    #Scale(1, -1, 1)
-                    #Translate(-self.x, -self.y - self.height, 0)
                 
                     fbo.add(self.stencil.canvas)
                     fbo.draw()
                     img = fbo.texture
-                    #print(img)
-                    #img.save('test.png')
                     fbo.remove(self.stencil.canvas)
                     self.remove_widget(self.paintscreen)
                     im = np.frombuffer(img.pixels, np.uint8)
-                    #print(im)
-                    #im = imageio.imread('test.png')
-                    #print(im.shape)
-                    im = np.reshape(im, (5760000,1))
-                    #data = im.tostring()
-                    #print(data)
-                    data = im
-                    serialized_data = pickle.dumps(data, protocol=2)
-                    sock.sendall(serialized_data)
-                    #sock.close()
-                    # sock = socket.socket()
-                    # data= numpy.zeros((1, 60,30))
-                    # sock.connect(('localhost',8000))
-                    # serialized_data = pickle.dumps(data, protocol=2)
-                    # sock.sendall(serialized_data)
-                    sock.close()
+                    data = np.reshape(im, (5760000,1)).tostring()
                     
-                    #new_data = n.send(data)
-                    #print(new_data)
-                    #print(np.fromstring(data))
-                    # print(n.getP())
-                    #print(new_data.get_player_move(player))
-                    # new_data2 = new_data.get_player_move(player)
-                    # print(new_data2)
-                    # new_data3 = np.fromstring(new_data2)
-                    # print(new_data3.shape)
-                    #new_data2 = np.reshape(new_data2, (1200,1200,3))
+
+                    data2 = str(data)
+                    data2 = str.encode(data2)
+
                     pix = np.frombuffer(data,np.uint8)
                     a = np.empty_like(pix)
                     a[:] = pix
-                    #print(pix)
-                    #print(pix.shape)
-                    
+                    print(a)
+                    print("Shape of a is ", a.shape)
+                    print("Type of a is ", type(a))
                     texture = Texture.create(size=(1200, 1200))
                     
-                    texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
+                    #texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
+                    print("Sending...")
+                    
+                    import socket
+                    import pickle
+                    import matplotlib.pyplot as plt
+                    
+                    HEADERSIZE = 10
+                    
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.connect((socket.gethostname(), 1235))
+                    msglen = HEADERSIZE
+                   
+                    full_msg = b''
+                    new_msg = True
+                    while True:
+                        msg = s.recv(msglen)
+                        if new_msg:
+                            print("new msg len:",msg[:HEADERSIZE])
+                            msglen = int(msg[:HEADERSIZE])
+                            new_msg = False
+                
+                        print(f"full message length: {msglen}")
+                
+                        full_msg += msg
+                
+                        print(len(full_msg))
+                
+                
+                        if len(full_msg)-HEADERSIZE == msglen:
+                            print("full msg recvd")
+                            d = pickle.loads(full_msg[HEADERSIZE:])
+                            #plt.imshow(d)
+                            print(d.shape)
+                            new_msg = True
+                            full_msg = b''
+                            break
+                    
+                    #d = d.astype(np.int)
+                    d = np.reshape(d, (5760000))
+                    print("Shape of d is ", d.shape)
+                    print("Type of d is ", type(d))
 
-                        #self.paintscreen.export()
-                    # print("Trying to send an image")
-     
+                    #d = d.tostring()
+                    #print("Type of d is ", type(d))
+                    buf = [int(x * 255 / (1200*1200*4)) for x in range(1200*1200*4)]
+                    import array
+                    d = d.tolist()
+                   
+                    d = array.array('B',d).tostring()
+                    texture.blit_buffer(d , colorfmt='rgba', bufferfmt='ubyte')
+                    #arr = ' '.join([str(e) for e in a])
+                    #socket_client.send(a.tostring())
+                    
                     #new_image = read_pos(n.conne())
                     #print(f"The image we are receiving back is {new_image}")
                     #imageio.save('test2.png', new_image)
@@ -482,16 +427,14 @@ class PaintScreenContainer(Screen):
                     self.imge = Image( pos =(-200,0), size = (1200,1200), texture=texture)
                     self.add_widget(self.imge)
                     self.paintscreen = PaintScreen()
-                    #imge = Image(source='test.png')
-                    #self.paintscreen.add_widget(imge)
                     self.add_widget(self.paintscreen)
-                        #self.paintexport(self.stencil)
+                    socket_client.send(pickle.dumps(np.ones((1200*1200,1))))
                 return
             num -= 1
             self.count.text = str(num)
             Clock.schedule_once(lambda dt: count_it(num), 1)
 
-        Clock.schedule_once(lambda dt: count_it(15), 0)
+        Clock.schedule_once(lambda dt: count_it(1), 5)
 
         
         # after the clock runs out of time, we want to take a screenshot
@@ -663,10 +606,37 @@ class EnterTopicsScreenContainer(Screen):
 class MainMenu(GridLayout):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.cols = 1
-        self.message = Label(halign="center",valign="middle",font_size=30,color=[0,0,0,1])
-        self.message.bind(width=self.update_text_width)
-        self.add_widget(self.message)
+        self.cols = 2
+        self.rows = 4
+        
+        if (os.path.isfile("prev_details.txt")):
+            with open("prev_details.txt", "r") as f:
+                d = f.read().split(",")
+                prev_ip = d[0]
+                prev_port = d[1]
+                prev_username = d[2]
+                print("it is a file")
+        else:
+            prev_ip = ""
+            prev_port = ""
+            prev_username = ""
+        
+        self.add_widget(Label(text="IP:",color=[0,0,0,1]))
+        self.ip = TextInput(text=prev_ip,multiline = False)
+        self.add_widget(self.ip)
+        
+        self.add_widget(Label(text="Port:",color=[0,0,0,1]))
+        self.port = TextInput(text=prev_port,multiline = False)
+        self.add_widget(self.port)
+        
+        
+        self.add_widget(Label(text="Username:",color=[0,0,0,1]))
+        self.username = TextInput(text=prev_username,multiline = False)
+        self.add_widget(self.username)
+        #self.message = Label(halign="center",valign="middle",font_size=30,color=[0,0,0,1])
+        #self.message.bind(width=self.update_text_width)
+       # self.add_widget(self.message)
+        self.add_widget(Label())
         menubtn = Button(text = "Start Game")
         menubtn.bind(on_release = self.play_game)
         self.add_widget(menubtn)
@@ -678,24 +648,66 @@ class MainMenu(GridLayout):
         self.message.text_size = (self.message.width*0.9, None)
         
     def play_game(self,obj):
+        port = self.port.text
+        ip = self.ip.text
+        username = self.username.text
+        
+        
+        
+        with open("prev_details.txt", "w") as f:
+            f.write(f"{ip},{port},{username}")
+        
+        info = f"Attempting to join {ip}:{port} as {username}"
+        paint_app.loading_screen.update_info(info)
         paint_app.screen_manager.switch_to(paint_app.screens[1])
-
+        
+        Clock.schedule_once(self.connect,1)
+    
+    def connect(self,_):
+        port = int(self.port.text)
+        ip = self.ip.text
+        username = self.username.text
+        if not socket_client.connect(ip, port, username, show_error):
+            return
+        paint_app.screen_manager.switch_to(paint_app.screens[2])
+    
+    
+    
+    
+def show_error(message):
+    paint_app.loading_screen.update_info(message)
+    paint_app.screen_manager.current = 'LoadingScreen'
+    Clock.schedule_once(sys.exit, 10)
+        
 class LoadingScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.cols= 1
+        self.message = Label(halign='center', valign='middle', font_size =30, color=[0,0,0,1])
+        self.message.bind(width = self.update_text_width)
+        self.add_widget(self.message)
         
+    def update_info(self, message):
+        self.message.text = message
+        
+    def update_text_width(self, *_):
+        self.message.text_size = (self.message.width*0.9, None)
+    
+    
+    
     def on_enter(self):
-        game = Game(100)
-        # p2pos = n.send(str.encode("Ready"))
-        # player2.x = p2pos
+        pass
+        # game = Game(100)
+        # # p2pos = n.send(str.encode("Ready"))
+        # # player2.x = p2pos
         
-        if not(game.connected()):
-            label = Label(text="Waiting for players to connect...", color=[0,0,0,1])
-            paint_app.screen_manager.switch_to(paint_app.screens[2])
-        else:
-            label = Label(text="Players connected",color = [0,0,0,1])
-            paint_app.screen_manager.switch_to(paint_app.screens[2])
-        self.add_widget(label)
+        # if not(game.connected()):
+        #     label = Label(text="Waiting for players to connect...", color=[0,0,0,1])
+        #     paint_app.screen_manager.switch_to(paint_app.screens[2])
+        # else:
+        #     label = Label(text="Players connected",color = [0,0,0,1])
+        #     paint_app.screen_manager.switch_to(paint_app.screens[2])
+        # self.add_widget(label)
     
 
 
@@ -707,15 +719,16 @@ class StencilCanvasApp(App):
         self.screen_manager = ScreenManager()
 
         self.screens = []
-        # self.main_menu = MainMenu()
-        # screen = Screen(name = 'Main')
-        # screen.add_widget(self.main_menu)
-        # self.screen_manager.add_widget(screen)
-        # self.screens.append(screen)
+        self.main_menu = MainMenu()
+        screen = Screen(name = 'Main')
+        screen.add_widget(self.main_menu)
+        self.screen_manager.add_widget(screen)
+        self.screens.append(screen)
         
-        # screen = LoadingScreen(name="Load")
-        # self.screen_manager.add_widget(screen)
-        # self.screens.append(screen)
+        screen = LoadingScreen(name="Load")
+        self.loading_screen = screen
+        self.screen_manager.add_widget(screen)
+        self.screens.append(screen)
         
         # screen = EnterTopicsScreenContainer()
         # self.screen_manager.add_widget(screen)
@@ -738,17 +751,15 @@ def make_pos(arr):
     return np.array2string(arr)
 
 if __name__ == '__main__':
-    n = Network()
+    #n = Network()
     paint_app = StencilCanvasApp()
-    player = int(n.getP())
-    print("You are player ", player)
-
-
-    while True:
-        game = n.send(str.encode("reset"))
-        if game.connected():
-            print("Game connected!")
-            break
+    #player = int(n.getP())
+    #print("You are player ", player)
+    # while True:
+    #     game = n.send(str.encode("reset"))
+    #     if game.connected():
+    #         print("Game connected!")
+    #         break
 
     paint_app.run()
 

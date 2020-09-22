@@ -1,10 +1,12 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Aug 31 10:32:00 2020
 
+'''
+
+Created on Mon Aug 31 10:32:00 2020
 @author: Tech With Tim
-"""
+'''
 
 import socket
 import pickle
@@ -36,7 +38,7 @@ class Network:
         try:
             self.client.send(data)
             print("Sent: ", data)
-            return pickle.loads(self.client.recv(4096*32))
+            return pickle.loads(self.client.recv(4096*4096))
         except socket.error as e:
             print(e)
-            
+

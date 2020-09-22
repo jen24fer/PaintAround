@@ -36,8 +36,11 @@ def threaded_client(conn, p, gameID):
     reply = ""
     while True:
         try:
-            data = conn.recv(4096*8).decode()
+            #data = conn.recv(4096*8)
+            data = conn.recv(4096*32)
             print(data)
+            #unserialized_input = pickle.loads(data,encoding='bytes')
+            #print(unserialized_input)
             if gameID in games: # if the game still exists
                 game = games[gameID]
                 if not data:
@@ -46,6 +49,7 @@ def threaded_client(conn, p, gameID):
                     if data == 'reset':
                         game.resetWent()
                     elif data != 'get':
+                        print("data is not get, playing game")
                         game.play(p, data)
                     
                     reply = game
