@@ -65,11 +65,12 @@ import socket_client
 from kivy.config import Config
 from kivy.utils import platform
 
-
+Config.set('graphics', 'resizable', 0)
 from kivy.core.window import Window
 Window.clearcolor = (1, 1, 1, 1)
 print(Window.system_size)
-Window.size = (kivy.metrics.dp(800), kivy.metrics.dp(600))
+print(Window.size)
+#Window.size = (kivy.metrics.dp(600), kivy.metrics.dp(400))
 WINSORYELLOW = (255/255.0,229/255.0,15/255.0)
 WINSORYELLOWDEEP = (255/255.0, 200/255.0, 53/255.0)
 CADMIUMRED = (227/255.0,0/255.0,34/255.0)
@@ -110,7 +111,7 @@ class StencilTestWidget(StencilView):
         #self.size = (1200, 1200)
         self.color = [0,0,0,1]
         #self.size_hint=(1.0, 1.0)
-        self.size=(kivy.metrics.dp(1200),kivy.metrics.dp(1200))
+        self.size=(1200, 1200)
         self.id = 'stencil'
         print(self.size)
 
@@ -396,9 +397,9 @@ class PaintScreenContainer(Screen):
                     print(a)
                     print("Shape of a is ", a.shape)
                     print("Type of a is ", type(a))
-                    texture = Texture.create(size=(1200, 1200))
+                    texture = Texture.create(size=self.stencil.size)
                     
-                    #texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
+                    texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
                     print("Sending...")
                     
                     # import socket
@@ -451,7 +452,7 @@ class PaintScreenContainer(Screen):
                     socket_client.send(a)
                     
  
-                    self.imge = Image( pos =(-200,0), size = (1200,1200), texture=texture)
+                    self.imge = Image( pos =(-160,0), size = (1200,1200), texture=texture)
                     self.add_widget(self.imge)
                     self.paintscreen = PaintScreen()
                     self.add_widget(self.paintscreen)
