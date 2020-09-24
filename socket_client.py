@@ -45,9 +45,19 @@ def send(message):
     # Encode message to bytes, prepare header and convert to bytes, like for username above, then send
     message = pickle.dumps(message)#.encode('utf-8')
     message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
-
+    print(message)
     client_socket.send(message_header + message)
 
+
+def startGame(message):
+    message = pickle.dumps(message)
+    message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
+    print(message)
+    try:
+        client_socket.send(message_header + message)
+        return pickle.loads(client_socket.recv(4096))
+    except socket.error as e:
+        print(e)
 # Starts listening function in a thread
 # incoming_message_callback - callback to be called when new message arrives
 # error_callback - callback to be called on error

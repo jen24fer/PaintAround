@@ -5,11 +5,11 @@ Created on Mon Aug 31 18:53:53 2020
 
 @author: Tech With Tim
 """
-import pygame
 
 class Player():
-    def __init__(self, image):
-        self.image = image
+    def __init__(self, name):
+        self.name = name
+        print("Name has been created ", self.name)
         # self.y = y
         # self.width = width
         # self.height = height
@@ -17,6 +17,7 @@ class Player():
         # self.rect = (x,y,width,height)
         # self.vel = 3
     
+
     # def draw(self, win):
     #     pygame.draw.rect(win, self.color, self.rect)
     

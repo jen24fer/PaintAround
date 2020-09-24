@@ -7,13 +7,14 @@ Created on Mon Aug 31 20:33:19 2020
 """
 class Game:
     def __init__(self, iden):
-        self.p1Went = False
-        self.p2Went = False
-        self.ready = False
-        self.id = iden
-        self.moves = [None, None]
-        self.wins = [0,0]
-        self.ties = 0
+        # self.p1Went = False
+        # self.p2Went = False
+        # self.ready = False
+        # self.id = iden
+        # self.moves = [None, None]
+        # self.wins = [0,0]
+        # self.ties = 0
+        print("Creating a new game with id ", iden)
         
     def get_player_move(self, p):
         """

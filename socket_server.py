@@ -28,8 +28,28 @@ sockets_list = [server_socket]
 
 # List of connected clients - socket as a key, user header and name as data
 clients = {}
-
+games = {}
 print(f'Listening for connections on {IP}:{PORT}...')
+
+# def threaded_client(conn, p, gameId):
+#     global idCount
+#     conn.send(p)
+#     reply = ""
+#     while True:
+#         data = conn.recv(4096)
+#         if gameId in games:
+#             game = games[gameId]
+
+#             if not data:
+#                 break
+#             else:
+#                 if data == "reset":
+#                     game.resetWent()
+#                 elif data != "get":
+#                     game.play(p, data)
+#         reply = game
+#         conn.sendall(pickle.dumps(reply))
+        
 
 # Handles message receiving
 def receive_message(client_socket):
@@ -45,29 +65,30 @@ def receive_message(client_socket):
 
         # Convert header to int value
         message_length = int(message_header.decode('utf-8').strip())
-        # msglen = message_length
+        msglen = message_length
         
-        # full_msg = b''
+        full_msg = b''
         # new_msg = True
-        # while True:
-        #     msg = client_socket.recv(msglen)
+        # print("About to enter the loop")
+        print(msglen)
+        while len(full_msg) < msglen:
+            msg = client_socket.recv(4096)
+            
+            #print(f"full message length: {msglen}")
     
-        #     print(f"full message length: {msglen}")
+            full_msg += msg
     
-        #     full_msg += msg
-    
-        #     print(len(full_msg))
+            #print(len(full_msg))
     
     
-        #     if len(full_msg) == msglen:
-        #         print("full msg recvd")
-        #         d = pickle.loads(full_msg)
-        #         print(d)
-        #         break  
+            if len(full_msg) == msglen:
+                print("full msg recvd")
+                #d = pickle.loads(full_msg)
+                #print(d)
+                break  
             
         # Return an object of message header and message data
-        print("Got out of the loop")
-        return {'header': message_header, 'data': client_socket.recv(message_length)}
+        return {'header': message_header, 'data': full_msg}#client_socket.recv(message_length)}
 
     except:
 
@@ -137,7 +158,7 @@ while True:
 
             # Get user by notified socket, so we will know who sent the message
             user = clients[notified_socket]
-
+ 
             print(f'Received message from {user["data"].decode("utf-8")}: {pickle.loads(message["data"])}')
 
             # Iterate over connected clients and broadcast message
