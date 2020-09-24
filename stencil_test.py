@@ -114,6 +114,22 @@ class StencilTestWidget(StencilView):
         self.size=(1200, 1200)
         self.id = 'stencil'
         print(self.size)
+        texture = Texture.create(size=(64,64))
+        # create 64x64 rgb tab, and fill with values from 0 to 255
+        # we'll have a gradient from black to white
+        size = 1200 * 1200 * 3
+        buf = [int(x * 255 / size) for x in range(size)]
+        import array
+        # then, convert the array to a ubyte string
+        buf = array.array('B', buf).tostring()
+
+        # then blit the buffer
+        texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+        a = np.random.randint(low = 0, high = 255, size=(1200*1200*4,1));
+        #texture = Texture.create(size=self.size)
+        #texture.blit_buffer(a.tostring(), colorfmt='rgba', bufferfmt='ubyte')
+        self.image = Image(pos =(0,0), size_hint =(1.0,1.0), texture=texture)
+        #self.add_widget(self.image)
 
     def export(self, wid, *largs):
 
@@ -168,9 +184,28 @@ class PaintScreen(GridLayout):
         self.rows = 1
         self.cols = 2
         self.paint_widget = MyPaintWidget()
-        
+        texture = Texture.create(size=(64,64))
+        # create 64x64 rgb tab, and fill with values from 0 to 255
+        # we'll have a gradient from black to white
+        size = 1200 * 1200 * 3
+        buf = [int(x * 255 / size) for x in range(size)]
+        import array
+        # then, convert the array to a ubyte string
+        buf = array.array('B', buf).tostring()
+
+        # then blit the buffer
+        texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+        a = np.random.randint(low = 0, high = 255, size=(1200*1200*4,1));
+        #texture = Texture.create(size=self.size)
+        #texture.blit_buffer(a.tostring(), colorfmt='rgba', bufferfmt='ubyte')
+        self.image = Image(pos =(0,0), size =(1200,1200), texture=texture)
+        #self.paint_widget.add_widget(self.image)
+		
+		
         self.stencil = StencilTestWidget()
+        self.stencil.add_widget(self.image)
         self.stencil.add_widget(self.paint_widget)
+		
         #self.add_widget(self.stencil)
         self.grid_layout = GridLayout(cols = 2)
         self.in_layout = GridLayout(rows = 16, size_hint=(0.25,1))
@@ -452,9 +487,10 @@ class PaintScreenContainer(Screen):
                     socket_client.send(a)
                     
  
-                    self.imge = Image( pos =(-160,0), size = (1200,1200), texture=texture)
-                    self.add_widget(self.imge)
+                    self.imge = Image( pos =(0,0), size = (1200,1200), texture=texture)
+                    #self.add_widget(self.imge)
                     self.paintscreen = PaintScreen()
+                    self.paintscreen.stencil.image = self.imge
                     self.add_widget(self.paintscreen)
                     #socket_client.send(pickle.dumps(np.ones((1200*1200,1))))
                 return
