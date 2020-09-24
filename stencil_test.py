@@ -17,6 +17,7 @@ box. All the graphics will draw only in the stencil view.
 You can "draw" a stencil view by touch & draw. The touch down will set the
 position, and the drag will set the size.
 '''
+import kivy
 from kivy.graphics.fbo import Fbo
 from kivy.graphics import Color, Rectangle, Canvas, ClearBuffers, ClearColor, Translate, Scale
 from kivy.graphics.transformation import Matrix
@@ -64,11 +65,11 @@ import socket_client
 from kivy.config import Config
 from kivy.utils import platform
 
-Config.set('graphics', 'resizable', 0)
+
 from kivy.core.window import Window
 Window.clearcolor = (1, 1, 1, 1)
-Window.size = (800,600)
-
+print(Window.system_size)
+Window.size = (kivy.metrics.dp(800), kivy.metrics.dp(600))
 WINSORYELLOW = (255/255.0,229/255.0,15/255.0)
 WINSORYELLOWDEEP = (255/255.0, 200/255.0, 53/255.0)
 CADMIUMRED = (227/255.0,0/255.0,34/255.0)
@@ -106,9 +107,12 @@ class StencilTestWidget(StencilView):
     def __init__(self,**kwargs):
         super().__init__(**kwargs)
         self.pos = (0,0)
-        self.size = (1200, 1200)
+        #self.size = (1200, 1200)
         self.color = [0,0,0,1]
-
+        #self.size_hint=(1.0, 1.0)
+        self.size=(kivy.metrics.dp(1200),kivy.metrics.dp(1200))
+        self.id = 'stencil'
+        print(self.size)
 
     def export(self, wid, *largs):
 
@@ -164,14 +168,16 @@ class PaintScreen(GridLayout):
         self.cols = 2
         self.paint_widget = MyPaintWidget()
         
-        self.stencil = StencilTestWidget(size_hint=(None, None), size=(1200,1200),id = 'stencil')
+        self.stencil = StencilTestWidget()
         self.stencil.add_widget(self.paint_widget)
-        self.add_widget(self.stencil)
-        self.grid_layout = GridLayout(cols = 2, rows = 16)
-        #self.grid_layout.add_widget(self.stencil)
+        #self.add_widget(self.stencil)
+        self.grid_layout = GridLayout(cols = 2)
+        self.in_layout = GridLayout(rows = 16, size_hint=(0.25,1))
+        self.grid_layout.add_widget(self.stencil)
+		
         clearbtn = Button(text='Clear', pos=(1350,1100))
         clearbtn.bind(on_release=self.clear_canvas)
-        self.grid_layout.add_widget(clearbtn)
+        self.in_layout.add_widget(clearbtn)
         
         #self.add_widget(self.grid_layout)
         mixbtn = Button(text='Mix', pos = (1350, 850))
@@ -182,12 +188,12 @@ class PaintScreen(GridLayout):
         
         changeAlpha = Slider(min=0,max=100, pos =(1350,1000), sensitivity = 'handle')
         changeAlpha.bind(value=self.change_alpha)
-        self.grid_layout.add_widget(mixbtn)
-        self.grid_layout.add_widget(switchbtn)
-        self.grid_layout.add_widget(Label(text=""))
+        self.in_layout.add_widget(mixbtn)
+        self.in_layout.add_widget(switchbtn)
+        self.in_layout.add_widget(Label(text=""))
         
-        self.grid_layout.add_widget(Label(text="Transparency", color=(0,0,0,1)))
-        self.grid_layout.add_widget(changeAlpha)
+        self.in_layout.add_widget(Label(text="Transparency", color=(0,0,0,1)))
+        self.in_layout.add_widget(changeAlpha)
         
         changeLinewidth = Slider(min=0,max=100,pos=(1350,930), sensitivity = 'handle')
         changeLinewidth.bind(value=self.change_linewidth)
@@ -195,8 +201,8 @@ class PaintScreen(GridLayout):
         # self.add_widget(changeLinewidth)
         # self.add_widget(changeAlpha)       
         # self.add_widget(Label(text='Water (Transparency)', pos=(1350,1040), color=(0,0,0,1)))
-        self.grid_layout.add_widget(Label(text="Brush Width", color=(0,0,0,1)))
-        self.grid_layout.add_widget(changeLinewidth)
+        self.in_layout.add_widget(Label(text="Brush Width", color=(0,0,0,1)))
+        self.in_layout.add_widget(changeLinewidth)
         
         for col in PAINT_COLORS:
             if iters % 2 == 0 and iters != 0:
@@ -217,8 +223,11 @@ class PaintScreen(GridLayout):
             iters += 1
 
             col_button.bind(on_release=self.change_color)
-            self.grid_layout.add_widget(col_button)
+            self.in_layout.add_widget(col_button)
+        self.grid_layout.add_widget(self.in_layout)
         self.add_widget(self.grid_layout)
+		
+		
         # self.add_widget(clearbtn)
         # self.add_widget(mixbtn)
         # self.add_widget(switchbtn)
@@ -302,7 +311,7 @@ class PaintScreen(GridLayout):
         
         popup = Popup(title='Mix Colors',
                       content=boxLayout,
-                      size_hint=(None, None), size=(1250, 400),auto_dismiss=False, pos_hint={'x': 0.1, 
+                      size_hint=(0.8,0.6),auto_dismiss=False, pos_hint={'x': 0.1, 
                             'y':0})
        
         exitbtn.bind(on_press = popup.dismiss)
@@ -334,10 +343,10 @@ class PaintScreenContainer(Screen):
         self.add_widget(self.paintscreen)
         self.count = Label(text="", pos=(720, 300),font_size=45,color=[0,0,0,1])
         self.grid = self.paintscreen
-        
-        for child in self.grid.children[:]:
-                if child.id == 'stencil':
-                    self.stencil = child
+        self.stencil = self.grid.stencil
+        # for child in self.grid.children[:]:
+                # if child.id == 'stencil':
+                    # self.stencil = child
 
         
     def on_enter(self):
@@ -375,7 +384,7 @@ class PaintScreenContainer(Screen):
                     fbo.remove(self.stencil.canvas)
                     self.remove_widget(self.paintscreen)
                     im = np.frombuffer(img.pixels, np.uint8)
-                    data = np.reshape(im, (5760000,1)).tostring()
+                    data = np.reshape(im, (im.shape[0],1)).tostring()
                     
 
                     data2 = str(data)
