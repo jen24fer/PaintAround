@@ -21,6 +21,7 @@ import kivy
 from kivy.graphics.fbo import Fbo
 from kivy.graphics import Color, Rectangle, Canvas, ClearBuffers, ClearColor, Translate, Scale
 from kivy.graphics.transformation import Matrix
+from kivy.graphics.instructions import InstructionGroup
 #from kivy.uix.image import Image, AsyncImage
 from kivy.app import App
 
@@ -64,7 +65,7 @@ import sys
 import socket_client
 from kivy.config import Config
 from kivy.utils import platform
-
+import PIL
 Config.set('graphics', 'resizable', 0)
 from kivy.core.window import Window
 Window.clearcolor = (1, 1, 1, 1)
@@ -97,8 +98,48 @@ CHANGE_TO_PAINT_SCREEN = False
 my_color = [0, 0, 0]
 my_alpha = 100.0
 my_linewidth = 1.0
+DRAWN_POINTS = {}
+TOUCH_COUNTER = 0
 
+class MyBackground(Widget):
+    
+    texture = ObjectProperty()
+    
+    def __init__(self, **kwargs):
+        super(MyBackground, self).__init__(**kwargs)
+        with self.canvas.before:
+            
+            #texture = Texture.create(size=(self.size))
+                    
+            size = 1200 * 1200 * 3
+            buf = [int(x * 255.0 / size ) for x in range(size)]
+            import array
+            # then, convert the array to a ubyte string
+            buf = array.array('B', buf).tostring()
+    
+            # then blit the buffer
+            #texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+            im1 = Image(source='Yosemite-Mac.jpg').texture
+            #self.texture = im
+            im = np.frombuffer(im1.pixels, np.uint8)
+            data = np.reshape(im, (im.shape[0],1)).tostring()
 
+            pix = np.frombuffer(data,np.uint8)
+            a = np.empty_like(pix)
+            texture = Texture.create(size=(1200,1200))
+                    
+            texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
+            self.texture = texture
+            self.bg = Rectangle(texture=self.texture, pos=self.pos, size=self.size)
+
+        self.bind(pos=self.update_bg)
+        self.bind(size=self.update_bg)
+        self.bind(texture=self.update_bg)
+
+    def update_bg(self, *args):
+        self.bg.pos = self.pos
+        self.bg.size = self.size
+        self.bg.texture = self.texture
 
 class StencilTestWidget(StencilView):
     '''Drag to define stencil area
@@ -109,16 +150,19 @@ class StencilTestWidget(StencilView):
         super().__init__(**kwargs)
         self.pos = (0,0)
         #self.size = (1200, 1200)
-        self.color = [0,0,0,1]
+        self.color = [1,1,1,0]
         #self.size_hint=(1.0, 1.0)
         self.size=(1200, 1200)
+        #self.size_hint = (1,1)
         self.id = 'stencil'
         print(self.size)
         texture = Texture.create(size=(64,64))
+        # self.bg = MyBackground()
+        # self.add_widget(self.bg)
         # create 64x64 rgb tab, and fill with values from 0 to 255
         # we'll have a gradient from black to white
         size = 1200 * 1200 * 3
-        buf = [int(x * 255 / size) for x in range(size)]
+        buf = [int(0 ) for x in range(size)]
         import array
         # then, convert the array to a ubyte string
         buf = array.array('B', buf).tostring()
@@ -126,9 +170,10 @@ class StencilTestWidget(StencilView):
         # then blit the buffer
         texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
         a = np.random.randint(low = 0, high = 255, size=(1200*1200*4,1));
+
         #texture = Texture.create(size=self.size)
         #texture.blit_buffer(a.tostring(), colorfmt='rgba', bufferfmt='ubyte')
-        self.image = Image(pos =(0,0), size_hint =(1.0,1.0), texture=texture)
+        #self.image = Rectangle(pos =(0,0), size_hint = (1.0,1.0),source = 'Yosemite-Mac.jpg')
         #self.add_widget(self.image)
 
     def export(self, wid, *largs):
@@ -157,15 +202,28 @@ class StencilTestWidget(StencilView):
 
 
 class MyPaintWidget(Widget):
+    counter = 0
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint = (1.0,1.0)
+        
     def on_touch_down(self, touch):
         with self.canvas:
             Color(my_color[0],my_color[1],my_color[2],my_alpha / 100.0)
             touch.ud['line'] = Line(points=(touch.x, touch.y), width = my_linewidth)
+            global DRAWN_POINTS
+            global TOUCH_COUNTER
+            TOUCH_COUNTER += 1
+            DRAWN_POINTS[TOUCH_COUNTER] = [touch.x, touch.y]
 
     def on_touch_move(self, touch):
         if 'line' in touch.ud:
             touch.ud['line'].points += [touch.x, touch.y]
+            global DRAWN_POINTS
+            global TOUCH_COUNTER
+            TOUCH_COUNTER += 1
+            DRAWN_POINTS[TOUCH_COUNTER] = [touch.x, touch.y]
 
 class PaintScreen(GridLayout):
   
@@ -180,9 +238,11 @@ class PaintScreen(GridLayout):
         start_v = 45
         size_paint = 100
         iters = 0
+        self.size_hint = (1.0,1.0)
         #self.grid_layout = GridLayout(cols = 2, rows = 1)
         self.rows = 1
         self.cols = 2
+        
         self.paint_widget = MyPaintWidget()
         texture = Texture.create(size=(64,64))
         # create 64x64 rgb tab, and fill with values from 0 to 255
@@ -198,18 +258,22 @@ class PaintScreen(GridLayout):
         a = np.random.randint(low = 0, high = 255, size=(1200*1200*4,1));
         #texture = Texture.create(size=self.size)
         #texture.blit_buffer(a.tostring(), colorfmt='rgba', bufferfmt='ubyte')
-        self.image = Image(pos =(0,0), size =(1200,1200), texture=texture)
+
         #self.paint_widget.add_widget(self.image)
 		
-		
+
         self.stencil = StencilTestWidget()
-        self.stencil.add_widget(self.image)
+        #self.image = Image(pos =(0,0), size =self.stencil.size, texture=texture)
+        #self.stencil.add_widget(self.image)
         self.stencil.add_widget(self.paint_widget)
-		
+
+        #self.add_widget(self.stencil)
         #self.add_widget(self.stencil)
         self.grid_layout = GridLayout(cols = 2)
         self.in_layout = GridLayout(rows = 16, size_hint=(0.25,1))
-        self.grid_layout.add_widget(self.stencil)
+        self.bg = MyBackground()
+        self.bg.add_widget(self.stencil)
+        self.grid_layout.add_widget(self.bg)
 		
         clearbtn = Button(text='Clear', pos=(1350,1100))
         clearbtn.bind(on_release=self.clear_canvas)
@@ -262,13 +326,7 @@ class PaintScreen(GridLayout):
             self.in_layout.add_widget(col_button)
         self.grid_layout.add_widget(self.in_layout)
         self.add_widget(self.grid_layout)
-		
-		
-        # self.add_widget(clearbtn)
-        # self.add_widget(mixbtn)
-        # self.add_widget(switchbtn)
-    
-
+        self.clear_canvas(clearbtn)
     
     def export(self,*args):
         print("Hello there export")
@@ -278,7 +336,14 @@ class PaintScreen(GridLayout):
         plt.imshow(im)
         
     def clear_canvas(self, obj):
-        self.paint_widget.canvas.clear()
+        with self.paint_widget.canvas: 
+            self.paint_widget.canvas.clear()
+            #self.paint_widget.canvas.ClearColor(1,1,1,0)
+            clear = InstructionGroup() 
+            clear.add(Color(1, 1, 1, 0)) 
+            clear.add(Rectangle(pos=self.pos, size=self.size))
+            self.paint_widget.canvas.add(clear)
+            #
     
     def change_color(self, obj):
         global my_color 
@@ -380,6 +445,7 @@ class PaintScreenContainer(Screen):
         self.count = Label(text="", pos=(720, 300),font_size=45,color=[0,0,0,1])
         self.grid = self.paintscreen
         self.stencil = self.grid.stencil
+
         # for child in self.grid.children[:]:
                 # if child.id == 'stencil':
                     # self.stencil = child
@@ -411,14 +477,15 @@ class PaintScreenContainer(Screen):
                 fbo = Fbo(size=self.stencil.size, with_stencilbuffer=True)
 
                 with fbo:
-                    ClearColor(1,1, 1, 1)
+                    ClearColor(1,1, 1, 0)
                     ClearBuffers()
-                
+                    img2 = self.paintscreen.bg.texture
                     fbo.add(self.stencil.canvas)
                     fbo.draw()
                     img = fbo.texture
                     fbo.remove(self.stencil.canvas)
-                    self.remove_widget(self.paintscreen)
+
+                    #self.remove_widget(self.paintscreen)
                     im = np.frombuffer(img.pixels, np.uint8)
                     data = np.reshape(im, (im.shape[0],1)).tostring()
                     
@@ -432,46 +499,12 @@ class PaintScreenContainer(Screen):
                     print(a)
                     print("Shape of a is ", a.shape)
                     print("Type of a is ", type(a))
-                    texture = Texture.create(size=self.stencil.size)
+                    #texture = Texture.create(size=self.stencil.size)
                     
-                    texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
+                    #texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
                     print("Sending...")
-                    
-                    # import socket
-                    # import pickle
-                    # import matplotlib.pyplot as plt
-                    
-                    # HEADERSIZE = 10
-                    
-                    # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    # s.connect((socket.gethostname(), 1235))
-                    # msglen = HEADERSIZE
+                
                    
-                    # full_msg = b''
-                    # new_msg = True
-                    # while True:
-                    #     msg = s.recv(msglen)
-                    #     if new_msg:
-                    #         print("new msg len:",msg[:HEADERSIZE])
-                    #         msglen = int(msg[:HEADERSIZE])
-                    #         new_msg = False
-                
-                    #     print(f"full message length: {msglen}")
-                
-                    #     full_msg += msg
-                
-                    #     print(len(full_msg))
-                
-                
-                    #     if len(full_msg)-HEADERSIZE == msglen:
-                    #         print("full msg recvd")
-                    #         d = pickle.loads(full_msg[HEADERSIZE:])
-                    #         #plt.imshow(d)
-                    #         print(d.shape)
-                    #         new_msg = True
-                    #         full_msg = b''
-                    #         break
-                    
                    
                     # d = np.reshape(d, (5760000))
                     # print("Shape of d is ", d.shape)
@@ -486,13 +519,74 @@ class PaintScreenContainer(Screen):
 
                     socket_client.send(a)
                     
- 
-                    self.imge = Image( pos =(0,0), size = (1200,1200), texture=texture)
-                    #self.add_widget(self.imge)
+                    print(a)
+
+                    
+
+                    texture = Texture.create(size=self.stencil.size)
+                    
+                    texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
+                    self.imge = Image(pos=(0,0), size = self.paintscreen.stencil.size, texture=texture)
+                    #self.paintscreen.stencil.add_widget(self.imge)
+                   
+                    #img2 = self.paintscreen.grid_layout.bg.texture
+                    im2 = np.frombuffer(img2.pixels, np.uint8)
+                    data = np.reshape(im2, (im2.shape[0],1)).tostring()
+                    
+
+                    data2 = str(data)
+                    data2 = str.encode(data2)
+
+                    pix = np.frombuffer(data,np.uint8)
+                    a2 = np.empty_like(pix)
+                    a2[:] = pix
+                
+                    img2 = a2
+                    print(img2.shape)
+                    
+                    print(img2)
+                    img1 = a
+                    print(img1.shape)
+
+                    import cv2
+                    #setting alpha=1, beta=1, gamma=0 gives direct overlay of two images
+                    # in theory this would give a direct overlay...
+                    img3 = cv2.addWeighted(img1, 1, img2, 1, 0)
+                    print(img3.shape)
+
+                    im = img1.reshape(1200,1200,4)
+                    for i in range(0, 1200):
+                        for j in range(0,1200):
+                            points = im[i,j,:] 
+                            if (points[0] == 255 & points[1] == 255 & points[2] == 255):
+                                im[i,j,:] = [255,255,255,0]
+                    img_2 = img2.reshape((1200,1200,4))  
+                    for i in range(0,1200):
+                        for j in range(0,1200):
+                            points1 =im[i,j,:]
+                            if (points1[3] != 0):
+                                img_2[i,j,:] = im[i,j,:]
+                            
+                    
+
+                    img3 = cv2.addWeighted(img2.reshape((1200,1200,4)), 1, im, 1, 0)
+                    print(img3.shape)
+                    img = PIL.Image.fromarray(im ,'RGBA')            
+                    img.save('img_1.png')
+                    img_3 = PIL.Image.fromarray(img_2 ,'RGBA')            
+                    img_3.save('img_3.png')
+                    img3 = np.reshape(img3, (img3.shape[0]*img3.shape[1]*img3.shape[2],))
+
+                    texture = Texture.create(size=(1200,1200))
+                    
+                    texture.blit_buffer(np.reshape(img_2,(1200*1200*4,)), colorfmt='rgba', bufferfmt='ubyte')
+                    #print(img3.reshape(1200,1200,4))
+                    #self.grid.bg.texture = texture
+                    #self.paintscreen.stencil.add_widget(Image(texture=texture,size = self.paintscreen.stencil.size))
+                
+                   
+                    self.grid.bg.texture = texture
                     self.paintscreen = PaintScreen()
-                    self.paintscreen.stencil.image = self.imge
-                    self.add_widget(self.paintscreen)
-                    #socket_client.send(pickle.dumps(np.ones((1200*1200,1))))
                 return
             num -= 1
             self.count.text = str(num)
