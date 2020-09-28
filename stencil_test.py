@@ -538,11 +538,13 @@ class PaintScreenContainer(Screen):
                     socket_client.send(img_2)
                     
                     
+   
+                    while MESSAGE is None:
+                        pass
                     if MESSAGE is not None:
                         new_img = MESSAGE
                     else:
                         new_img = img_2
-                    
                     
                     texture = Texture.create(size=(1200,1200))
                     

@@ -1,6 +1,7 @@
 import socket
 import select
 import pickle
+from llist import sllist
 HEADER_LENGTH = 10
 
 IP = "127.0.0.1"
@@ -28,6 +29,7 @@ sockets_list = [server_socket]
 
 # List of connected clients - socket as a key, user header and name as data
 clients = {}
+my_list = []
 games = {}
 player1 = None
 print(f'Listening for connections on {IP}:{PORT}...')
@@ -115,7 +117,7 @@ while True:
     #   - errors  - sockets with some exceptions
     # This is a blocking call, code execution will "wait" here and "get" notified in case any action should be taken
     read_sockets, _, exception_sockets = select.select(sockets_list, [], sockets_list)
-
+    my_list = sllist(sockets_list)
 
     # Iterate over notified sockets
     for notified_socket in read_sockets:
@@ -137,9 +139,12 @@ while True:
 
             # Add accepted socket to select.select() list
             sockets_list.append(client_socket)
+            my_list.append(client_socket)
 
             # Also save username and username header
             clients[client_socket] = user
+            
+       
             if player1 is None:
                 player1 = (client_socket, user)
                 print(player1)
