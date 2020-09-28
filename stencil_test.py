@@ -100,6 +100,7 @@ my_alpha = 100.0
 my_linewidth = 1.0
 DRAWN_POINTS = {}
 TOUCH_COUNTER = 0
+MESSAGE = None
 
 class MyBackground(Widget):
     
@@ -130,7 +131,7 @@ class MyBackground(Widget):
                     
             texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
             self.texture = texture
-            self.bg = Rectangle(texture=self.texture, pos=self.pos, size=self.size)
+            self.bg = Rectangle(texture=self.texture, pos=self.pos, size=(1200,1200))
 
         self.bind(pos=self.update_bg)
         self.bind(size=self.update_bg)
@@ -138,7 +139,7 @@ class MyBackground(Widget):
 
     def update_bg(self, *args):
         self.bg.pos = self.pos
-        self.bg.size = self.size
+        #self.bg.size = self.size
         self.bg.texture = self.texture
 
 class StencilTestWidget(StencilView):
@@ -446,10 +447,6 @@ class PaintScreenContainer(Screen):
         self.grid = self.paintscreen
         self.stencil = self.grid.stencil
 
-        # for child in self.grid.children[:]:
-                # if child.id == 'stencil':
-                    # self.stencil = child
-
         
     def on_enter(self):
         print("Entered the screen")
@@ -463,14 +460,13 @@ class PaintScreenContainer(Screen):
         self.popup = Popup(title=f'Drawing: {str(SELECTED_THEME)}',
                       content=Label(text="You have 30 seconds to draw!"),
                       size_hint=(None, None), size=(600, 400),auto_dismiss=True)
-        self.popup.open()
+        #self.popup.open()
         #self.popup.close()
         #Clock.schedule_once(self.close_popup, 3)
         paint_app.title = SELECTED_THEME
         
-
-        num = 60
-          
+        socket_client.start_listening(self.incoming_message, show_error)
+        num = 60        
         self.add_widget(self.count)
         def count_it(num):
             if num == 0: 
@@ -484,8 +480,7 @@ class PaintScreenContainer(Screen):
                     fbo.draw()
                     img = fbo.texture
                     fbo.remove(self.stencil.canvas)
-
-                    #self.remove_widget(self.paintscreen)
+                    self.remove_widget(self.paintscreen)
                     im = np.frombuffer(img.pixels, np.uint8)
                     data = np.reshape(im, (im.shape[0],1)).tostring()
                     
@@ -496,33 +491,6 @@ class PaintScreenContainer(Screen):
                     pix = np.frombuffer(data,np.uint8)
                     a = np.empty_like(pix)
                     a[:] = pix
-                    print(a)
-                    print("Shape of a is ", a.shape)
-                    print("Type of a is ", type(a))
-                    #texture = Texture.create(size=self.stencil.size)
-                    
-                    #texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
-                    print("Sending...")
-                
-                   
-                   
-                    # d = np.reshape(d, (5760000))
-                    # print("Shape of d is ", d.shape)
-                    # print("Type of d is ", type(d))
-
-                    # buf = [int(x * 255 / (1200*1200*4)) for x in range(1200*1200*4)]
-                    # import array
-                    # d = d.tolist()
-                   
-                    # d = array.array('B',d).tostring()
-                    # texture.blit_buffer(d , colorfmt='rgba', bufferfmt='ubyte')
-
-                    socket_client.send(a)
-                    
-                    print(a)
-
-                    
-
                     texture = Texture.create(size=self.stencil.size)
                     
                     texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
@@ -547,19 +515,19 @@ class PaintScreenContainer(Screen):
                     print(img2)
                     img1 = a
                     print(img1.shape)
-
+                    
                     import cv2
                     #setting alpha=1, beta=1, gamma=0 gives direct overlay of two images
                     # in theory this would give a direct overlay...
-                    img3 = cv2.addWeighted(img1, 1, img2, 1, 0)
-                    print(img3.shape)
+                    #img3 = cv2.addWeighted(img1, 1, img2, 1, 0)
+                    #print(img3.shape)
 
                     im = img1.reshape(1200,1200,4)
-                    for i in range(0, 1200):
-                        for j in range(0,1200):
-                            points = im[i,j,:] 
-                            if (points[0] == 255 & points[1] == 255 & points[2] == 255):
-                                im[i,j,:] = [255,255,255,0]
+                    # for i in range(0, 1200):
+                    #     for j in range(0,1200):
+                    #         points = im[i,j,:] 
+                    #         if (points[3] == 0):#points[0] == 255 & points[1] == 255 & points[2] == 255):
+                    #             im[i,j,:] = [255,255,255,0]
                     img_2 = img2.reshape((1200,1200,4))  
                     for i in range(0,1200):
                         for j in range(0,1200):
@@ -567,26 +535,22 @@ class PaintScreenContainer(Screen):
                             if (points1[3] != 0):
                                 img_2[i,j,:] = im[i,j,:]
                             
+                    socket_client.send(img_2)
                     
-
-                    img3 = cv2.addWeighted(img2.reshape((1200,1200,4)), 1, im, 1, 0)
-                    print(img3.shape)
-                    img = PIL.Image.fromarray(im ,'RGBA')            
-                    img.save('img_1.png')
-                    img_3 = PIL.Image.fromarray(img_2 ,'RGBA')            
-                    img_3.save('img_3.png')
-                    img3 = np.reshape(img3, (img3.shape[0]*img3.shape[1]*img3.shape[2],))
-
+                    
+                    if MESSAGE is not None:
+                        new_img = MESSAGE
+                    else:
+                        new_img = img_2
+                    
+                    
                     texture = Texture.create(size=(1200,1200))
                     
-                    texture.blit_buffer(np.reshape(img_2,(1200*1200*4,)), colorfmt='rgba', bufferfmt='ubyte')
-                    #print(img3.reshape(1200,1200,4))
-                    #self.grid.bg.texture = texture
-                    #self.paintscreen.stencil.add_widget(Image(texture=texture,size = self.paintscreen.stencil.size))
-                
-                   
-                    self.grid.bg.texture = texture
+                    texture.blit_buffer(np.reshape(new_img,(1200*1200*4,)), colorfmt='rgba', bufferfmt='ubyte')       
+                    
                     self.paintscreen = PaintScreen()
+                    self.add_widget(self.paintscreen)
+                    self.paintscreen.bg.texture = texture
                 return
             num -= 1
             self.count.text = str(num)
@@ -594,16 +558,16 @@ class PaintScreenContainer(Screen):
 
         Clock.schedule_once(lambda dt: count_it(1), 10)
 
-        
-        # after the clock runs out of time, we want to take a screenshot
-        # photo = Window.screenshot("test.png")
-        # print(photo)
-        
-        #self.paintscreen.export()
-
     # def close_popup(self):
     #     self.popup.dismiss()
-
+    def incoming_message(self, username, message):
+         print("In the incoming message thingy")
+         print(f'{username} > {message}')
+         global MESSAGE
+         MESSAGE = message
+        # Update chat history with username and message, green color for username
+        #self.history.update_chat_history(f'[color=20dd20]{username}[/color] > {message}')
+        
 
 
 class SelectableGrid(FocusBehavior, CompoundSelectionBehavior, GridLayout):
@@ -885,16 +849,29 @@ class JoiningScreen(Screen):
     def update_text_width(self, *_):
         self.message.text_size = (self.message.width*0.9, None)
     
+
     
     
     def on_enter(self):
         self.message.text = "Waiting for players to join..."
         try:
-            no = socket_client.startGame("Go")
-            self.message.text = str(no)
+            #socket_client.start_listening(self.incoming_message, show_error)
+            #no = socket_client.startGame("Go")
+            # self.message.text = str(no)
+            # if no == "Go":
+            paint_app.screen_manager.switch_to(paint_app.screens[3])
         except Exception as e:
             print(e)
             print("Couldn't get game")
+            
+
+
+def show_error(message):
+    # chat_app.info_page.update_info(message)
+    # chat_app.screen_manager.current = 'Info'
+    print(message)
+    sys.exit()
+
 
 class StencilCanvasApp(App):
     title = 'PaintAround'
@@ -914,10 +891,10 @@ class StencilCanvasApp(App):
         self.screen_manager.add_widget(screen)
         self.screens.append(screen)
         
-        # screen = JoiningScreen(name ="Join")
-        # self.joining_screen = screen
-        # self.screen_manager.add_widget(screen)
-        # self.screens.append(screen)
+        screen = JoiningScreen(name ="Join")
+        self.joining_screen = screen
+        self.screen_manager.add_widget(screen)
+        self.screens.append(screen)
         # screen = EnterTopicsScreenContainer()
         # self.screen_manager.add_widget(screen)
         # self.screens.append(screen)

@@ -29,6 +29,7 @@ sockets_list = [server_socket]
 # List of connected clients - socket as a key, user header and name as data
 clients = {}
 games = {}
+player1 = None
 print(f'Listening for connections on {IP}:{PORT}...')
 
 # def threaded_client(conn, p, gameId):
@@ -87,9 +88,13 @@ def receive_message(client_socket):
                 #print(d)
                 break  
             
+        # if (len(clients) > 1 & full_msg == "Go"):
+        #     print("could potentially start game")
+        #     client_socket.send(user['header'] + user['data'] + message['header'] + message['data'])
+            
         # Return an object of message header and message data
         return {'header': message_header, 'data': full_msg}#client_socket.recv(message_length)}
-
+    
     except:
 
         # If we are here, client closed connection violently, for example by pressing ctrl+c on his script
@@ -135,7 +140,9 @@ while True:
 
             # Also save username and username header
             clients[client_socket] = user
-
+            if player1 is None:
+                player1 = (client_socket, user)
+                print(player1)
             print('Accepted new connection from {}:{}, username: {}'.format(*client_address, user['data'].decode('utf-8')))
 
         # Else existing socket is sending a message
@@ -179,3 +186,4 @@ while True:
 
         # Remove from our list of users
         del clients[notified_socket]
+        

@@ -406,6 +406,7 @@ class PaintScreen(GridLayout):
 
     def switch_button(self, obj):
         info = "Switching screen"
+       
         # paint_app.main_menu.update_info(info)
         # paint_app.screen_manager.current = "Main"
   
@@ -426,9 +427,116 @@ class PaintScreenContainer(Screen):
         self.count = Label(text="", pos=(720, 300),font_size=45,color=[0,0,0,1])
         self.grid = self.paintscreen
         self.stencil = self.grid.stencil
+        # butt = Button(text='Butt', size_hint=(0.25,0.25))
+        # butt.bind(on_press = self.press)
+        # self.add_widget(butt)
 
         
     def on_enter(self):
+        num = 60        
+        self.add_widget(self.count)
+        def count_it(num):
+            if num == 0: 
+                fbo = Fbo(size=self.stencil.size, with_stencilbuffer=True)
+
+                with fbo:
+                    ClearColor(1,1, 1, 0)
+                    ClearBuffers()
+                    img2 = self.paintscreen.bg.texture
+                    fbo.add(self.stencil.canvas)
+                    fbo.draw()
+                    img = fbo.texture
+                    fbo.remove(self.stencil.canvas)
+                    self.remove_widget(self.paintscreen)
+                    im = np.frombuffer(img.pixels, np.uint8)
+                    data = np.reshape(im, (im.shape[0],1)).tostring()
+                    
+
+                    data2 = str(data)
+                    data2 = str.encode(data2)
+
+                    pix = np.frombuffer(data,np.uint8)
+                    a = np.empty_like(pix)
+                    a[:] = pix
+                    texture = Texture.create(size=self.stencil.size)
+                    
+                    texture.blit_buffer(a, colorfmt='rgba', bufferfmt='ubyte')
+                    self.imge = Image(pos=(0,0), size = self.paintscreen.stencil.size, texture=texture)
+                    #self.paintscreen.stencil.add_widget(self.imge)
+                   
+                    #img2 = self.paintscreen.grid_layout.bg.texture
+                    im2 = np.frombuffer(img2.pixels, np.uint8)
+                    data = np.reshape(im2, (im2.shape[0],1)).tostring()
+                    
+
+                    data2 = str(data)
+                    data2 = str.encode(data2)
+
+                    pix = np.frombuffer(data,np.uint8)
+                    a2 = np.empty_like(pix)
+                    a2[:] = pix
+                
+                    img2 = a2
+                    print(img2.shape)
+                    
+                    print(img2)
+                    img1 = a
+                    print(img1.shape)
+
+                    import cv2
+                    #setting alpha=1, beta=1, gamma=0 gives direct overlay of two images
+                    # in theory this would give a direct overlay...
+                    #img3 = cv2.addWeighted(img1, 1, img2, 1, 0)
+                    #print(img3.shape)
+
+                    im = img1.reshape(1200,1200,4)
+                    # for i in range(0, 1200):
+                    #     for j in range(0,1200):
+                    #         points = im[i,j,:] 
+                    #         if (points[3] == 0):#points[0] == 255 & points[1] == 255 & points[2] == 255):
+                    #             im[i,j,:] = [255,255,255,0]
+                    img_2 = img2.reshape((1200,1200,4))  
+                    for i in range(0,1200):
+                        for j in range(0,1200):
+                            points1 =im[i,j,:]
+                            if (points1[3] != 0):
+                                img_2[i,j,:] = im[i,j,:]
+                            
+                    
+
+                    # img3 = cv2.addWeighted(img_2, 1, im, 1, 0)
+                    # print(img3.shape)
+                    # img = PIL.Image.fromarray(im ,'RGBA')            
+                    # img.save('img_1.png')
+                    # img_3 = PIL.Image.fromarray(img_2 ,'RGBA')            
+                    # img_3.save('img_3.png')
+                    # img3 = np.reshape(img3, (img3.shape[0]*img3.shape[1]*img3.shape[2],))
+
+                    texture = Texture.create(size=(1200,1200))
+                    
+                    texture.blit_buffer(np.reshape(img_2,(1200*1200*4,)), colorfmt='rgba', bufferfmt='ubyte')
+                    #print(img3.reshape(1200,1200,4))
+                    #self.grid.bg.texture = texture
+                    #self.paintscreen.stencil.add_widget(Image(texture=texture,size = self.paintscreen.stencil.size))
+                
+                   
+                    
+                    self.paintscreen = PaintScreen()
+                    self.add_widget(self.paintscreen)
+                    self.paintscreen.bg.texture = texture
+                return
+            num -= 1
+            self.count.text = str(num)
+            Clock.schedule_once(lambda dt: count_it(num), 1)
+
+        Clock.schedule_once(lambda dt: count_it(1), 10)
+
+        
+        # after the clock runs out of time, we want to take a screenshot
+        # photo = Window.screenshot("test.png")
+        # print(photo)
+        
+    def press(self,obj):
         num = 60        
         self.add_widget(self.count)
         def count_it(num):

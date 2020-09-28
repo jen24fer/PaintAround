@@ -10,6 +10,7 @@ import socket
 import errno
 from threading import Thread
 import pickle
+from game import Game
 
 HEADER_LENGTH = 10
 client_socket = None
@@ -47,7 +48,7 @@ def send(message):
     message_header = f"{len(message):<{HEADER_LENGTH}}".encode('utf-8')
     print(message)
     client_socket.send(message_header + message)
-
+    #return client_socket.recv(4096*4096)
 
 def startGame(message):
     message = pickle.dumps(message)
@@ -55,7 +56,7 @@ def startGame(message):
     print(message)
     try:
         client_socket.send(message_header + message)
-        return pickle.loads(client_socket.recv(4096))
+        return pickle.loads(message)
     except socket.error as e:
         print(e)
 # Starts listening function in a thread
@@ -89,8 +90,28 @@ def listen(incoming_message_callback, error_callback):
                 message_header = client_socket.recv(HEADER_LENGTH)
                 
                 message_length = int(message_header.decode('utf-8').strip())
-                
-                message = client_socket.recv(message_length).decode('utf-8')
+                msglen = message_length
+        
+                full_msg = b''
+                # new_msg = True
+                # print("About to enter the loop")
+                print(msglen)
+                while len(full_msg) < msglen:
+                    msg = client_socket.recv(4096)
+                    
+                    #print(f"full message length: {msglen}")
+            
+                    full_msg += msg
+            
+                    #print(len(full_msg))
+            
+            
+                    if len(full_msg) == msglen:
+                        print("full msg recvd")
+                        #d = pickle.loads(full_msg)
+                        #print(d)
+                        break  
+                message = pickle.loads(full_msg)#.decode('utf-8')
                 print("Staying here in 2nd while loop of listen...")
 
                 # Print message
